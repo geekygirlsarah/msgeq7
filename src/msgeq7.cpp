@@ -8,18 +8,31 @@ int strobePin = 2; // strobe is attached to digital pin 2
 int resetPin = 3; // reset is attached to digital pin 3
 int spectrumValue[7]; // to hold a2d values
 
-int ledPins[7];
+int redPins[8];
+int greenPins[8];
+int bluePins[8];
 int bright = 0;
 
 int lastMode = 0;   // start here
 int buttonPin1 = 12;
 int buttonPin2 = 13;
 
+double maxBass = 0;
+
 int getButtonPress(int button)
 {
     return digitalRead(button);
 }
 
+void clearLeds()
+{
+  for (int i = 0; i < 8; i++)
+  {
+    digitalWrite(redPins[i], LOW);
+    digitalWrite(greenPins[i], LOW);
+    digitalWrite(bluePins[i], LOW);
+  }
+}
 
 void getValues()
 {
@@ -54,9 +67,8 @@ void printSerialValues() {
             Serial.print(" ");
             Serial.print(spectrumValue[i]);
         }
-
-        Serial.println();
     }
+    Serial.println();
 #endif
 }
 
@@ -68,11 +80,14 @@ void ledGrEqBrightness()
 
         // if it's low, just turn it off
         if      (val <  48) { bright = 0;   }
-        else if (val <  92) { bright = 64;  }
-        else if (val < 128) { bright = 128; }
-        else if (val < 144) { bright = 192; }
+        else if (val <  96) { bright = 48;  }
+        else if (val < 128) { bright = 64;  }
+        else if (val < 192) { bright = 128; }
+        else if (val < 224) { bright = 192; }
         else { bright = 256; }
-        analogWrite(ledPins[i], bright);
+        analogWrite(redPins[i], bright);
+        digitalWrite(greenPins[i], LOW);
+        digitalWrite(bluePins[i], LOW);
     }
 }
 
@@ -80,7 +95,13 @@ void ledGrEqBass()
 {
   	// Get bass value
   	double val = spectrumValue[0] + spectrumValue[1];
-  	double percent = val / 600.0;
+
+    if (val > maxBass)
+    {
+      maxBass = val;
+    }
+
+  	double percent = val / maxBass;
   	int bass = percent * 100.0;
 
 #ifdef SERIAL_VALUES
@@ -90,19 +111,36 @@ void ledGrEqBass()
     Serial.print(percent);
     Serial.print("   Bass=");
     Serial.print(bass);
+    Serial.print("         ");
 #endif
 
-  	for (int i = 0; i < 7; i++)
-  	{
-  	   digitalWrite(ledPins[i], LOW);
-  	}
-  	if (bass >  7) { digitalWrite(ledPins[0], HIGH); }
-  	if (bass > 14) { digitalWrite(ledPins[1], HIGH); }
-  	if (bass > 28) { digitalWrite(ledPins[2], HIGH); }
-  	if (bass > 42) { digitalWrite(ledPins[3], HIGH); }
-  	if (bass > 57) { digitalWrite(ledPins[4], HIGH); }
-  	if (bass > 71) { digitalWrite(ledPins[5], HIGH); }
-  	if (bass > 85) { digitalWrite(ledPins[6], HIGH); }
+  	if (bass > 20) {
+      digitalWrite(greenPins[0], HIGH);
+    }
+  	if (bass > 30) {
+      digitalWrite(greenPins[1], HIGH);
+    }
+  	if (bass > 40) {
+      digitalWrite(greenPins[2], HIGH);
+    }
+  	if (bass > 50) {
+      digitalWrite(redPins[3], HIGH);
+      digitalWrite(greenPins[3], HIGH);
+    }
+  	if (bass > 60) {
+      digitalWrite(redPins[4], HIGH);
+      digitalWrite(greenPins[4], HIGH);
+    }
+  	if (bass > 70) {
+      digitalWrite(redPins[5], HIGH);
+      digitalWrite(greenPins[5], HIGH);
+    }
+    if (bass > 80) {
+      digitalWrite(redPins[6], HIGH);
+    }
+    if (bass > 90) {
+      digitalWrite(redPins[7], HIGH);
+    }
 }
 
 
@@ -119,16 +157,25 @@ void setup()
     digitalWrite(strobePin, HIGH);
 
     // init LEDs
-    for (int i = 0; i < 7; i++)
+    for (int i = 0; i < 8; i++)
     {
-        ledPins[i] = 5+i;
-        pinMode(ledPins[i], OUTPUT);
-        digitalWrite(ledPins[i], LOW);
+      pinMode(4+i, OUTPUT);
+      pinMode(23+(3*i), OUTPUT);
+      pinMode(24+(3*i), OUTPUT);
+
+      digitalWrite(4+i, LOW);
+      digitalWrite(23+(3*i), LOW);
+      digitalWrite(24+(3*i), LOW);
+
+      redPins[i] = 4+i;   // on PWMs
+      greenPins[i] = 23+(3*i); // still on old pins
+      bluePins[i] = 24+(3*i);  // still on old pins
     }
 }
 
 void loop()
 {
+    clearLeds();
     getValues();
     printSerialValues();
 
